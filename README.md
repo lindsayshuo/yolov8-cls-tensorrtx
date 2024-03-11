@@ -36,7 +36,7 @@ Currently, we support yolov8
 // download https://github.com/ultralytics/assets/releases/yolov8n.pt
 cp {tensorrtx}/yolov8/gen_wts.py {ultralytics}/ultralytics
 cd {ultralytics}/ultralytics
-python gen_wts.py
+python gen_wts.py -w yolov8n.pt -o yolov8n.wts -t detect
 // a file 'yolov8n.wts' will be generated.
 ```
 
@@ -69,6 +69,24 @@ wget -O coco.txt https://raw.githubusercontent.com/amikelive/coco-labels/master/
 # Run inference with labels file
 ./yolov8_seg -d yolov8s-seg.engine ../images c coco.txt //cpu postprocess
 ```
+
+### classification
+```
+cd {tensorrtx}/yolov8/
+// update kNumClass in config.h if your model is trained on custom dataset
+mkdir build
+cd build
+cp {ultralytics}/ultralytics/yolov8n-cls.wts {tensorrtx}/yolov8/build
+cmake ..
+make
+sudo ./yolov8_cls -s [.wts] [.engine] [n/s/m/l/x]  // serialize model to plan file
+sudo ./yolov8_cls -d [.engine] [image folder]  [c/g] // deserialize and run inference, the images in [image folder] will be processed.
+// For example yolov8
+sudo ./yolov8_cls -s yolov8n-cls.wts yolov8-cls.engine n
+sudo ./yolov8_cls -d yolov8n-cls.engine ../images c //cpu postprocess
+sudo ./yolov8_cls -d yolov8n-cls.engine ../images g //gpu postprocess
+
+
 3. check the images generated, as follows. _zidane.jpg and _bus.jpg
 
 4. optional, load and run the tensorrt model in python
@@ -76,7 +94,7 @@ wget -O coco.txt https://raw.githubusercontent.com/amikelive/coco-labels/master/
 ```
 // install python-tensorrt, pycuda, etc.
 // ensure the yolov8n.engine and libmyplugins.so have been built
-python yolov8_trt.py
+python yolov8_cls.py
 ```
 
 # INT8 Quantization
