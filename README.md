@@ -87,7 +87,7 @@ sudo ./yolov8_cls -d yolov8n-cls.engine ../images c //cpu postprocess
 sudo ./yolov8_cls -d yolov8n-cls.engine ../images g //gpu postprocess
 
 
-
+```
 
 4. optional, load and run the tensorrt model in python
 
