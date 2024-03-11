@@ -94,7 +94,9 @@ sudo ./yolov8_cls -d yolov8n-cls.engine ../images g //gpu postprocess
 ```
 // install python-tensorrt, pycuda, etc.
 // ensure the yolov8n.engine and libmyplugins.so have been built
-python yolov8_cls.py
+python yolov8_det.py  #Detection
+python yolov8_seg.py  #Segmentation
+python yolov8_cls.py  #classification
 ```
 
 # INT8 Quantization
