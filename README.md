@@ -83,7 +83,10 @@ sudo ./yolov8_cls -s [.wts] [.engine] [n/s/m/l/x]  // serialize model to plan fi
 sudo ./yolov8_cls -d [.engine] [image folder]  // deserialize and run inference, the images in [image folder] will be processed.
 // For example yolov8
 sudo ./yolov8_cls -s yolov8n-cls.wts yolov8-cls.engine n
-sudo ./yolov8_cls -d yolov8n-cls.engine ../images
+wget https://github.com/lindsayshuo/infer_pic/blob/main/1709970363.6990473rescls%20.jpg
+mkdir samples
+cp -r 1709970363.6990473rescls%20.jpg samples
+sudo ./yolov8_cls -d yolov8n-cls.engine ./samples
 
 
 ```
