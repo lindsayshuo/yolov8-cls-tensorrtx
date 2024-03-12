@@ -80,11 +80,10 @@ cp {ultralytics}/ultralytics/yolov8n-cls.wts {tensorrtx}/yolov8/build
 cmake ..
 make
 sudo ./yolov8_cls -s [.wts] [.engine] [n/s/m/l/x]  // serialize model to plan file
-sudo ./yolov8_cls -d [.engine] [image folder]  [c/g] // deserialize and run inference, the images in [image folder] will be processed.
+sudo ./yolov8_cls -d [.engine] [image folder]  // deserialize and run inference, the images in [image folder] will be processed.
 // For example yolov8
 sudo ./yolov8_cls -s yolov8n-cls.wts yolov8-cls.engine n
-sudo ./yolov8_cls -d yolov8n-cls.engine ../images c //cpu postprocess
-sudo ./yolov8_cls -d yolov8n-cls.engine ../images g //gpu postprocess
+sudo ./yolov8_cls -d yolov8n-cls.engine ../images
 
 
 ```
