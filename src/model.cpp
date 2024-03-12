@@ -8,8 +8,6 @@
 
 static int get_width(int x, float gw, int max_channels, int divisor = 8) {
     auto channel = int(ceil((x * gw) / divisor)) * divisor;
-    std::cout << "Calculated channel width: " << channel << std::endl;
-    std::cout << "Maximum channel limit: " << max_channels << std::endl;
     return channel >= max_channels ? max_channels : channel;
 }
 
@@ -227,15 +225,6 @@ nvinfer1::IHostMemory* buildEngineYolov8Det(nvinfer1::IBuilder* builder,
 
 
 
-void printDims(const std::string& layerName, const nvinfer1::Dims& dims) {
-    std::cout << layerName << " Dimensions(" << dims.nbDims << "): [ ";
-    for (int i = 0; i < dims.nbDims; ++i) {
-        std::cout << dims.d[i] << " ";
-    }
-    std::cout << "]" << std::endl;
-}
-// 示例用法
-// printDims(conv0->getOutput(0)->getDimensions());
 nvinfer1::IHostMemory* buildEngineYolov8Cls(nvinfer1::IBuilder* builder,
                                             nvinfer1::IBuilderConfig* config, nvinfer1::DataType dt,
                                             const std::string& wts_path, float& gd, float& gw) {
@@ -245,124 +234,37 @@ nvinfer1::IHostMemory* buildEngineYolov8Cls(nvinfer1::IBuilder* builder,
     // ****************************************** YOLOV8 INPUT **********************************************
     nvinfer1::ITensor* data = network->addInput(kInputTensorName, dt, nvinfer1::Dims3{3, kClsInputH, kClsInputW});
     assert(data);
-    std::cout << "max_channels : ["<< max_channels<<"]" << std::endl;
-    if (data)
-{
-    // 获取维度对象
-    nvinfer1::Dims dims = data->getDimensions();
-    // 打印维度信息
-    std::cout << "Input shape: [";
-    for (int i = 0; i < dims.nbDims; ++i)
-    {
-        std::cout << dims.d[i];
-        if (i < dims.nbDims - 1)
-        {
-            std::cout << ", ";
-        }
-    }
-    std::cout << "]" << std::endl;
-}
-//    max_channels=2048;
+
     // ***************************************** YOLOV8 BACKBONE ********************************************
     nvinfer1::IElementWiseLayer* conv0 = convBnSiLU(network, weightMap, *data, get_width(64, gw, max_channels), 3, 2, 1, "model.0");
-    printDims("conv0", conv0->getOutput(0)->getDimensions());
-
-
-
-
-
     nvinfer1::IElementWiseLayer* conv1 = convBnSiLU(network, weightMap, *conv0->getOutput(0), get_width(128, gw, max_channels), 3, 2, 1, "model.1");
-    printDims("conv1", conv1->getOutput(0)->getDimensions());
-
-
-
     // C2 Block (11233)
     nvinfer1::IElementWiseLayer* conv2 = C2F(network, weightMap, *conv1->getOutput(0), get_width(128, gw, max_channels), get_width(128, gw, max_channels), get_depth(3, gd), true, 0.5, "model.2");
-    printDims("conv2", conv2->getOutput(0)->getDimensions());
-
-
     nvinfer1::IElementWiseLayer* conv3 = convBnSiLU(network, weightMap, *conv2->getOutput(0), get_width(256, gw, max_channels), 3, 2, 1, "model.3");
-    printDims("conv3", conv3->getOutput(0)->getDimensions());
-
-
     // C2 Block Sequence (22466)
     nvinfer1::IElementWiseLayer* conv4 = C2F(network, weightMap, *conv3->getOutput(0), get_width(256, gw, max_channels), get_width(256, gw, max_channels), get_depth(6, gd), true, 0.5, "model.4");
-    printDims("conv4", conv4->getOutput(0)->getDimensions());
-
-
     nvinfer1::IElementWiseLayer* conv5 = convBnSiLU(network, weightMap, *conv4->getOutput(0), get_width(512, gw, max_channels), 3, 2, 1, "model.5");
-    printDims("conv5", conv5->getOutput(0)->getDimensions());
-
-
     // C2 Block Sequence (22466)
     nvinfer1::IElementWiseLayer* conv6 = C2F(network, weightMap, *conv5->getOutput(0), get_width(512, gw, max_channels), get_width(512, gw, max_channels), get_depth(6, gd), true, 0.5, "model.6");
-    printDims("conv6", conv6->getOutput(0)->getDimensions());
-
-
     nvinfer1::IElementWiseLayer* conv7 = convBnSiLU(network, weightMap, *conv6->getOutput(0), get_width(1024, gw, max_channels), 3, 2, 1, "model.7");
-    printDims("conv7", conv7->getOutput(0)->getDimensions());
-
     // C2 Block (11233)
     nvinfer1::IElementWiseLayer* conv8 = C2F(network, weightMap, *conv7->getOutput(0), get_width(1024, gw, max_channels), get_width(1024, gw, max_channels), get_depth(3, gd), true, 0.5, "model.8");
-    printDims("conv8", conv8->getOutput(0)->getDimensions());
-
 
 
     // ********************************************* YOLOV8 HEAD *********************************************
 
     auto conv_class = convBnSiLU(network, weightMap, *conv8->getOutput(0), 1280, 1, 1, 1, "model.9.conv");
-    printDims("conv_class", conv_class->getOutput(0)->getDimensions());
     // Adjusted code
     nvinfer1::Dims dims = conv_class->getOutput(0)->getDimensions(); // Obtain the dimensions of the output of conv_class
     assert(dims.nbDims == 3); // Make sure there are exactly 3 dimensions (channels, height, width)
 
 
     nvinfer1::IPoolingLayer* pool2 = network->addPoolingNd(*conv_class->getOutput(0), nvinfer1::PoolingType::kAVERAGE, nvinfer1::DimsHW{ dims.d[1], dims.d[2] });
-//    int k = kClsInputH / 32;
-//    nvinfer1::IPoolingLayer* pool2 = network->addPoolingNd(*conv_class->getOutput(0), nvinfer1::PoolingType::kAVERAGE, nvinfer1::DimsHW{ k, k });
     assert(pool2);
-    nvinfer1::Dims pool2Dims = pool2->getOutput(0)->getDimensions();
-    // Output dimension information
-    std::cout << "Dimensions of the output from pool2 layer: ";
-    for (int i = 0; i < pool2Dims.nbDims; ++i) {
-        std::cout << pool2Dims.d[i] << " ";
-    }
-    std::cout << std::endl;
-
-    // Assuming 'C' is the channel, located at index 1 (according to the standard NCHW format)
-    int featureMapCount = pool2Dims.d[1];
-    std::cout << "Number of feature maps: " << featureMapCount << std::endl;
-
-    auto& fcWeights = weightMap["model.9.linear.weight"];
-    std::cout << "model.9.linear.weight count: " << fcWeights.count << std::endl;
-
-    // Calculate the weight shape if needed
-    // Assuming the weight shape for fully connected layer is [number of output channels x number of input channels]
-    // The number of output nodes of the fully connected layer has already been defined as 1000 previously
-    int outputChannels = kClsNumClass; // Number of output nodes for the fully connected layer, according to the value defined in your network
-    // The following calculation assumes that the weights are stored with output channels prioritized
-    int inputChannels = fcWeights.count / outputChannels;
-    std::cout << "Shape of model.9.linear.weight: [" << outputChannels << " x " << inputChannels << "]" << std::endl;
 
     // Fully connected layer declaration
     nvinfer1::IFullyConnectedLayer* yolo = network->addFullyConnected(*pool2->getOutput(0), kClsNumClass, weightMap["model.9.linear.weight"], weightMap["model.9.linear.bias"]);
     assert(yolo);
-
-        if (yolo)
-{
-    // Assuming yolo has been correctly added to the network and has an output
-    nvinfer1::Dims dims1 = yolo->getOutput(0)->getDimensions();
-
-    // Printing the shape of the fully connected layer's output
-    std::cout << "Output shape of yolo: [";
-    for (int i = 0; i < dims1.nbDims; ++i)
-    {
-        std::cout << dims1.d[i];
-        if (i < dims1.nbDims - 1)
-        {
-            std::cout << ", ";
-        }
-    }std::cout << "]" << std::endl;}
 
     // Set the name for the output tensor and mark it as network output
     yolo->getOutput(0)->setName(kOutputTensorName);

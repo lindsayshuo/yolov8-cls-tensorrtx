@@ -155,54 +155,50 @@ class YoLov8TRT(object):
         for _ in range(self.batch_size):
             yield np.zeros([self.input_h, self.input_w, 3], dtype=np.uint8)
 
-    def preprocess_cls_image(self, raw_bgr_image):
+    def preprocess_cls_image(self, raw_bgr_image, dst_width=224, dst_height=224):
 
-        """
-                description: Convert BGR image to RGB,
-                             resize and pad it to target size, normalize to [0,1],
-                             transform to NCHW format.
-                param:
-                    input_image_path: str, image path
-                return:
-                    image:  the processed image
-                    image_raw: the original image
-                    h: original height
-                    w: original width
-                """
-        image_raw = raw_bgr_image
-        h, w, c = image_raw.shape
-        image = cv2.cvtColor(image_raw, cv2.COLOR_BGR2RGB)
-        # Calculate widht and height and paddings
-        r_w = self.input_w / w
-        r_h = self.input_h / h
-        if r_h > r_w:
-            tw = self.input_w
-            th = int(r_w * h)
-            tx1 = tx2 = 0
-            ty1 = int((self.input_h - th) / 2)
-            ty2 = self.input_h - th - ty1
-        else:
-            tw = int(r_h * w)
-            th = self.input_h
-            tx1 = int((self.input_w - tw) / 2)
-            tx2 = self.input_w - tw - tx1
-            ty1 = ty2 = 0
-        # Resize the image with long side while maintaining ratio
-        image = cv2.resize(image, (tw, th))
-        # Pad the short side with (128,128,128)
-        image = cv2.copyMakeBorder(
-            image, ty1, ty2, tx1, tx2, cv2.BORDER_CONSTANT, None, (128, 128, 128)
-        )
-        image = image.astype(np.float32)
-        # Normalize to [0,1]
-        image /= 255.0
-        # HWC to CHW format:
-        image = np.transpose(image, [2, 0, 1])
-        # CHW to NCHW format
-        image = np.expand_dims(image, axis=0)
-        # Convert the image to row-major order, also known as "C order":
-        image = np.ascontiguousarray(image)
-        return image
+	    """
+	        description: Convert BGR image to RGB,
+	                     crop the center square frame,
+	                     resize it to target size, normalize to [0,1],
+	                     transform to NCHW format.
+	        param:
+	            raw_bgr_image: numpy array, raw BGR image
+	            dst_width: int, target image width
+	            dst_height: int, target image height
+	        return:
+	            image:  the processed image
+	            image_raw: the original image
+	            h: original height
+	            w: original width
+	    """
+	    image_raw = raw_bgr_image
+	    h, w, c = image_raw.shape
+	    # Crop the center square frame
+	    m = min(h, w)
+	    top = (h - m) // 2
+	    left = (w - m) // 2
+	    image = raw_bgr_image[top:top + m, left:left + m]
+	    
+	    # Resize the image with target size while maintaining ratio
+	    image = cv2.resize(image, (dst_width, dst_height), interpolation=cv2.INTER_LINEAR)
+	    
+	    # Convert BGR to RGB
+	    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+	    
+	    # Normalize to [0,1]
+	    image = image.astype(np.float32) / 255.0
+	    
+	    # HWC to CHW format
+	    image = image.transpose(2, 0, 1)
+	    
+	    # CHW to NCHW format (add batch dimension)
+	    image = np.expand_dims(image, axis=0)
+	    
+	    # Convert the image to row-major order, also known as "C order"
+	    image = np.ascontiguousarray(image)
+	    
+	    return image
 
     def postprocess_cls(self, output_data):
         classes_ls = []
@@ -253,7 +249,7 @@ class warmUpThread(threading.Thread):
 
 if __name__ == "__main__":
     # load custom plugin and engine
-    engine_file_path = "./yolov8n-cls.engine"
+    engine_file_path = "./yolov8x-cls-fp32.engine"
 
     if len(sys.argv) > 1:
         engine_file_path = sys.argv[1]
